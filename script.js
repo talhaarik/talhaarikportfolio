@@ -268,15 +268,67 @@ const activeObserver = new IntersectionObserver((entries) => {
 navTargets.forEach((section) => activeObserver.observe(section));
 
 const form = document.querySelector('#contact-form');
-form.addEventListener('submit', (event) => {
+const contactTrap = document.createElement('input');
+contactTrap.type = 'text';
+contactTrap.name = '_honey';
+contactTrap.tabIndex = -1;
+contactTrap.autocomplete = 'off';
+contactTrap.setAttribute('aria-hidden', 'true');
+contactTrap.style.display = 'none';
+form.append(contactTrap);
+form.elements.name.maxLength = 100;
+form.elements.email.maxLength = 254;
+form.elements.message.maxLength = 5000;
+let contactSending = false;
+form.addEventListener('submit', async (event) => {
   event.preventDefault();
-  const values = new FormData(form);
-  const subject = `Portfolio enquiry from ${values.get('name')}`;
-  const body = `${values.get('message')}\n\nFrom: ${values.get('name')}\nEmail: ${values.get('email')}`;
-  window.location.href = `mailto:talhaarikyatirim@gmail.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  if (contactSending || !form.reportValidity()) return;
   const status = document.querySelector('#form-status');
+  if (contactTrap.value) return;
+  const values = new FormData(form);
+  const button = form.querySelector('button[type="submit"]');
+  const buttonContent = button.innerHTML;
+  contactSending = true;
+  button.disabled = true;
+  button.textContent = 'Sending…';
+  form.setAttribute('aria-busy', 'true');
   status.hidden = false;
-  status.textContent = 'Your email app will open with your message ready to send.';
+  status.textContent = 'Sending your message…';
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 20000);
+  try {
+    const response = await fetch('https://formsubmit.co/ajax/talhaarikyatirim@gmail.com', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+      body: JSON.stringify({
+        name: String(values.get('name')).trim(),
+        email: String(values.get('email')).trim(),
+        message: String(values.get('message')).trim(),
+        _replyto: String(values.get('email')).trim(),
+        _subject: 'New portfolio message — ' + String(values.get('name')).trim(),
+        _template: 'table',
+        _honey: ''
+      }),
+      signal: controller.signal
+    });
+    const result = await response.json();
+    if (!response.ok || !(result.success === true || result.success === 'true')) throw new Error('Submission failed');
+    status.textContent = 'Thank you! Your message has been submitted. I’ll get back to you soon.';
+    form.reset();
+  } catch (error) {
+    status.replaceChildren(document.createTextNode('Your message could not be sent. Please try again or '));
+    const fallback = document.createElement('a');
+    fallback.href = 'mailto:talhaarikyatirim@gmail.com';
+    fallback.textContent = 'email me directly';
+    fallback.style.textDecoration = 'underline';
+    status.append(fallback, document.createTextNode('.'));
+  } finally {
+    clearTimeout(timeout);
+    contactSending = false;
+    button.disabled = false;
+    button.innerHTML = buttonContent;
+    form.removeAttribute('aria-busy');
+  }
 });
 
 const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
