@@ -279,6 +279,26 @@ form.append(contactTrap);
 form.elements.name.maxLength = 100;
 form.elements.email.maxLength = 254;
 form.elements.message.maxLength = 5000;
+const contactSuccess = document.createElement('div');
+contactSuccess.className = 'contact-success';
+contactSuccess.hidden = true;
+contactSuccess.innerHTML = '<div class="contact-success-icon" aria-hidden="true"><svg viewBox="0 0 48 48" fill="none"><path d="m13 24 8 8 15-17" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/></svg></div><span class="contact-success-kicker">MESSAGE SENT</span><h3 tabindex="-1">Thanks for reaching out!</h3><p>Your message has been submitted successfully.<br>I’ll get back to you as soon as I can.</p><button type="button" class="contact-again">Send another message <span aria-hidden="true">↗</span></button>';
+form.after(contactSuccess);
+contactSuccess.querySelector('.contact-again').addEventListener('click', () => {
+  contactSuccess.hidden = true;
+  form.hidden = false;
+  const status = document.querySelector('#form-status');
+  status.hidden = true;
+  status.textContent = '';
+  form.elements.name.focus({preventScroll: true});
+});
+function showContactSuccess() {
+  contactSuccess.style.minHeight = form.offsetHeight + 'px';
+  form.reset();
+  form.hidden = true;
+  contactSuccess.hidden = false;
+  contactSuccess.querySelector('h3').focus({preventScroll: true});
+}
 let contactSending = false;
 form.addEventListener('submit', async (event) => {
   event.preventDefault();
@@ -313,8 +333,7 @@ form.addEventListener('submit', async (event) => {
     });
     const result = await response.json();
     if (!response.ok || !(result.success === true || result.success === 'true')) throw new Error('Submission failed');
-    status.textContent = 'Thank you! Your message has been submitted. I’ll get back to you soon.';
-    form.reset();
+    showContactSuccess();
   } catch (error) {
     status.replaceChildren(document.createTextNode('Your message could not be sent. Please try again or '));
     const fallback = document.createElement('a');
